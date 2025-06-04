@@ -21,12 +21,6 @@ jobs:
           echo "📂 Contents of pg_sbom:"
           ls -lhR ./pg_sbom
 
-      - name: Upload SBOM and Reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: pg17-sbom-artifacts
-          path: ./pg_sbom
-
       - name: Run SBOM Action for etcd
         uses: maqeel75/pgedge-sbom-action@v1.0.0
         with:
@@ -36,12 +30,6 @@ jobs:
         run: |
           echo "📂 Contents of pg_sbom:"
           ls -lhR ./pg_sbom
-
-      - name: Upload SBOM and Reports
-        uses: actions/upload-artifact@v4
-        with:
-          name: etcd-sbom-artifacts
-          path: ./pg_sbom
 
       - name: Run SBOM Action for spock40-pg17
         uses: maqeel75/pgedge-sbom-action@v1.0.0
@@ -56,6 +44,6 @@ jobs:
       - name: Upload SBOM and Reports
         uses: actions/upload-artifact@v4
         with:
-          name: spock40-pg17-sbom-artifacts
+          name: pgedge-sbom-artifacts
           path: ./pg_sbom
 
