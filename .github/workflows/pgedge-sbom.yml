@@ -1,0 +1,22 @@
+name: Generate PostgreSQL SBOM and Vulnerability Report
+
+on:
+  workflow_dispatch:
+
+jobs:
+  generate-sbom:
+    runs-on: ubuntu-latest
+    name: Run SBOM Action
+
+    steps:
+      - name: Use pgedge/sbom-action to generate reports
+        uses: pgedge/sbom-action@v1.0.0
+        with:
+          pg_tarball_url: "https://pgedge-download.s3.amazonaws.com/REPO/pg17-17.5-1-amd.tgz"
+
+      - name: Upload generated SBOM and reports
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-and-vuln-reports
+          path: /opt/pg_sbom
+
