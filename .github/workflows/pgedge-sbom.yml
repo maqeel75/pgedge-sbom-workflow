@@ -10,7 +10,7 @@ jobs:
 
     steps:
       - name: Use pgedge/sbom-action to generate reports
-        uses: pgedge/sbom-action@v1.0.0
+        uses: maqeel75/pgedge-sbom-action@v1.0.0
         with:
           pg_tarball_url: "https://pgedge-download.s3.amazonaws.com/REPO/pg17-17.5-1-amd.tgz"
 
