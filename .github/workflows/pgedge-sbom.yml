@@ -32,4 +32,3 @@ jobs:
         with:
           name: pgedge-sbom-artifacts
           path: ${{ github.workspace }}/pg_sbom
-          output-dir: ${{ github.workspace }}/pg_sbom
