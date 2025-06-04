@@ -30,6 +30,6 @@ jobs:
       - name: Upload SBOM and Reports
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-artifacts
+          name: pgedge-sbom-artifacts
           path: ${{ github.workspace }}/pg_sbom
-
+          output-dir: ${{ github.workspace }}/pg_sbom
