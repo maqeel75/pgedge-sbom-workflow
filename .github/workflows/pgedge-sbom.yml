@@ -1,22 +1,35 @@
-name: Generate PostgreSQL SBOM and Vulnerability Report
+name: Generate SBOM and Vulnerability Report
 
 on:
   workflow_dispatch:
+    inputs:
+      pg_tarball_url:
+        description: "PostgreSQL tarball URL"
+        required: false
+        default: "https://pgedge-download.s3.amazonaws.com/REPO/pg17-17.5-1-amd.tgz"
 
 jobs:
   generate-sbom:
     runs-on: ubuntu-latest
-    name: Run SBOM Action
 
     steps:
-      - name: Use pgedge/sbom-action to generate reports
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Run SBOM Action
         uses: maqeel75/pgedge-sbom-action@v1.0.0
         with:
-          pg_tarball_url: "https://pgedge-download.s3.amazonaws.com/REPO/pg17-17.5-1-amd.tgz"
+          pg_tarball_url: ${{ inputs.pg_tarball_url }}
+          output-dir: ${{ github.workspace }}/pg_sbom
 
-      - name: Upload generated SBOM and reports
+      - name: Debug output files
+        run: |
+          echo "📂 Contents of pg_sbom:"
+          ls -lhR ${{ github.workspace }}/pg_sbom
+
+      - name: Upload SBOM and Reports
         uses: actions/upload-artifact@v4
         with:
-          name: sbom-and-vuln-reports
-          path: /opt/pg_sbom
+          name: sbom-artifacts
+          path: ${{ github.workspace }}/pg_sbom
 
