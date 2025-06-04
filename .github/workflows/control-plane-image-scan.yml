@@ -1,0 +1,100 @@
+name: pgEdge Control Plane SBOM and Vulnerability Scan
+
+on:
+  workflow_dispatch:
+    inputs:
+      image:
+        description: 'Container image to scan'
+        required: false
+        default: 'public.ecr.aws/pgedge/control-plane:v0.1.0'
+
+jobs:
+  sbom-scan:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Prepare output directory
+        run: mkdir -p ${{ github.workspace }}/pg_sbom
+
+      - name: Install Syft if missing
+        run: |
+          if ! command -v syft &>/dev/null; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/syft/main/install.sh | sh -s -- -b /usr/local/bin
+          fi
+
+      - name: Install Grype if missing
+        run: |
+          if ! command -v grype &>/dev/null; then
+            curl -sSfL https://raw.githubusercontent.com/anchore/grype/main/install.sh | sh -s -- -b /usr/local/bin
+          fi
+
+      - name: Install jq if missing
+        run: |
+          if ! command -v jq &>/dev/null; then
+            sudo apt-get update && sudo apt-get install -y jq
+          fi
+
+      - name: Pull container image
+        run: docker pull ${{ github.event.inputs.image }}
+
+      - name: Set base name for output files
+        id: basename
+        run: |
+          IMAGE_NAME="${{ github.event.inputs.image }}"
+          # sanitize: replace : / with - to make a safe basename
+          PG_NAME_BASE=$(basename "$IMAGE_NAME" | sed 's/[:\/]/-/g')
+          echo "PG_NAME_BASE=$PG_NAME_BASE" >> $GITHUB_OUTPUT
+
+      - name: Generate SBOM - CycloneDX JSON
+        run: |
+          syft "${{ github.event.inputs.image }}" -o cyclonedx-json="${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-cyclonedx.json"
+
+      - name: Generate SBOM - SPDX JSON
+        run: |
+          syft "${{ github.event.inputs.image }}" -o spdx-json="${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-spdx.json"
+
+      - name: Run Grype vulnerability scan
+        run: |
+          grype sbom:"${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-cyclonedx.json" -o table > "${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-vuln.txt"
+
+      - name: Extract CycloneDX CVE summary JSON
+        run: |
+          jq '{
+            "$schema": ."$schema",
+            "bomFormat": .bomFormat,
+            "specVersion": .specVersion,
+            "serialNumber": .serialNumber,
+            "version": .version,
+            "metadata": .metadata,
+            "components": .components
+          }' "${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-cyclonedx.json" > "${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-cve.json"
+
+      - name: Extract SPDX license summary JSON
+        run: |
+          jq '{
+            "SPDXID": .SPDXID,
+            "spdxVersion": .spdxVersion,
+            "name": .name,
+            "dataLicense": .dataLicense,
+            "documentNamespace": .documentNamespace,
+            "creationInfo": .creationInfo,
+            "packages": [.packages[] | {
+              "name": .name,
+              "SPDXID": .SPDXID,
+              "versionInfo": .versionInfo,
+              "licenseConcluded": .licenseConcluded,
+              "licenseDeclared": .licenseDeclared,
+              "copyrightText": .copyrightText,
+              "supplier": .supplier
+            }]
+          }' "${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-spdx.json" > "${{ github.workspace }}/pg_sbom/sbom-${{ steps.basename.outputs.PG_NAME_BASE }}-license.json"
+
+      - name: Upload SBOM and reports artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: pgedge-sbom-artifacts
+          path: ${{ github.workspace }}/pg_sbom/
+
